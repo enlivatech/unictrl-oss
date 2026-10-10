@@ -1,0 +1,230 @@
+<Window
+    x:Class="Unictrl.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Unictrl">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar: the app draws it, like Windows Settings. -->
+        <Grid x:Name="TitleBar" Padding="16,0,0,0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image x:Name="TitleIcon" Width="16" Height="16" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="Unictrl" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="720" Padding="24,4,24,20">
+
+                <!-- Status -->
+                <Border Style="{StaticResource CardStyle}" Padding="16,14">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="StatusBadge" Width="44" Height="44" CornerRadius="22" Background="{StaticResource PineGradientBrush}">
+                            <FontIcon x:Name="StatusGlyph" Glyph="&#xE7F8;" FontSize="20" Foreground="White" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock x:Name="StatusText" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
+                            <TextBlock x:Name="DetailText" Style="{StaticResource BodyTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="EnabledSwitch" Grid.Column="2" MinWidth="0" OnContent="On" OffContent="Off"
+                                      Toggled="OnEnabledToggled" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Screens -->
+                <TextBlock Text="Screens" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource CardStyle}" Padding="14">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="ScreensHint" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="Drag the screens to match your desk; right-click one to rename it. Your Mac keeps both." />
+                        <Grid Height="160" CornerRadius="6" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
+                            <Canvas x:Name="ScreensCanvas" SizeChanged="OnCanvasSizeChanged" />
+                            <TextBlock x:Name="ScreensPlaceholder" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Connect to your Mac to arrange screens." />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Devices: the paired Mac -->
+                <TextBlock Text="Devices" Style="{StaticResource SectionHeaderStyle}" />
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE71B;" Style="{StaticResource CardIconStyle}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock x:Name="PairTitle" Style="{StaticResource BodyTextBlockStyle}" Text="Pairing" />
+                                <TextBlock x:Name="PairDetail" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button x:Name="PairAgainButton" Grid.Column="2" Content="Pair again" Click="OnPairAgain" VerticalAlignment="Center" />
+                        </Grid>
+                        <StackPanel x:Name="PairPanel" Margin="42,14,0,4" Spacing="8" Visibility="Collapsed">
+                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="On the Mac, click Unictrl in the menu bar, choose Pair a Windows PC…, and enter the code it shows." />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox x:Name="CodeBox" PlaceholderText="6-digit code" MaxLength="6" Width="160"
+                                         InputScope="Number" KeyDown="OnCodeKeyDown" />
+                                <Button x:Name="PairButton" Content="Pair" Style="{StaticResource AccentButtonStyle}" Click="OnPairClicked" />
+                                <Button x:Name="CancelPairButton" Content="Cancel" Click="OnCancelPair" />
+                            </StackPanel>
+                            <TextBlock x:Name="PairStatus" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Connection: how the pointer is doing here, live. The breakdown and the checklist fold away. -->
+                <StackPanel x:Name="ConnectionSection" Visibility="Collapsed">
+                    <Grid>
+                        <TextBlock Text="Connection" Style="{StaticResource SectionHeaderStyle}" />
+                        <TextBlock Text="Last minute, live" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Right"
+                                   VerticalAlignment="Bottom" Margin="0,0,2,8" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </Grid>
+                    <Border Style="{StaticResource CardStyle}" Padding="16,14">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse x:Name="GradeDot" Width="9" Height="9" VerticalAlignment="Center" />
+                                <TextBlock x:Name="GradeText" Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <TextBlock x:Name="GradePeer" Grid.Column="2" Margin="4,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock x:Name="RttText" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"
+                                               ToolTipService.ToolTip="Round trip to the Mac and back. One way is about half." />
+                                    <TextBlock x:Name="RttPeakText" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               ToolTipService.ToolTip="95 % of round trips in the last minute were this fast or faster." />
+                                </StackPanel>
+                            </Grid>
+                            <Canvas x:Name="RttCanvas" Height="48" SizeChanged="OnRttCanvasSizeChanged"
+                                    ToolTipService.ToolTip="Round trip over the last minute; marks along the bottom are hitches, coloured by where they came from." />
+                            <Expander x:Name="DetailsExpander" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Details and tips" VerticalAlignment="Center" />
+                                        <Border x:Name="SuggestionBadge" CornerRadius="9" Padding="8,1,8,2" VerticalAlignment="Center" Visibility="Collapsed"
+                                                Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
+                                            <TextBlock x:Name="SuggestionText" Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" FontWeight="SemiBold" />
+                                        </Border>
+                                    </StackPanel>
+                                </Expander.Header>
+                                <StackPanel Spacing="10">
+                                    <TextBlock x:Name="HitchText" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <StackPanel x:Name="TipsPanel" Spacing="4" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- General -->
+                <TextBlock Text="General" Style="{StaticResource SectionHeaderStyle}" />
+                <StackPanel Spacing="4">
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE765;" Style="{StaticResource CardIconStyle}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Keyboard" />
+                                <TextBlock x:Name="KeyboardDetail" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ComboBox x:Name="KeyboardBox" Grid.Column="2" MinWidth="220" VerticalAlignment="Center"
+                                      SelectionChanged="OnKeyboardChanged">
+                                <ComboBoxItem Tag="mx-keys-legends" Content="Windows layout" />
+                                <ComboBoxItem Tag="mac-positions" Content="Mac layout" />
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+                    <!-- Startup and where the icon shows, in one card to keep the page short. -->
+                    <Border Style="{StaticResource CardStyle}" Padding="16,4">
+                        <Grid RowSpacing="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <FontIcon Glyph="&#xE7E8;" Style="{StaticResource CardIconStyle}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Start with Windows" />
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="Runs in the background after you sign in" />
+                            </StackPanel>
+                            <ToggleSwitch x:Name="StartAtLoginSwitch" Grid.Column="2" MinWidth="0" OnContent="On" OffContent="Off"
+                                          Toggled="OnStartAtLoginToggled" VerticalAlignment="Center" />
+
+                            <Rectangle Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Height="1"
+                                       Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <StackPanel Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Show in notification area" />
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="The icon next to the clock" />
+                            </StackPanel>
+                            <ToggleSwitch x:Name="TraySwitch" Grid.Row="2" Grid.Column="2" MinWidth="0" OnContent="On" OffContent="Off"
+                                          Toggled="OnTrayToggled" VerticalAlignment="Center" />
+
+                            <Rectangle Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Height="1"
+                                       Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <StackPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Show in taskbar" />
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="Keep a taskbar button; closing the window minimizes it. With both icons off, open Unictrl from the Start menu." />
+                            </StackPanel>
+                            <ToggleSwitch x:Name="TaskbarSwitch" Grid.Row="4" Grid.Column="2" MinWidth="0" OnContent="On" OffContent="Off"
+                                          Toggled="OnTaskbarToggled" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock x:Name="AboutText" Margin="2,14,0,0" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                <TextBlock Margin="0,18,0,4" HorizontalAlignment="Center" Text="© 2026 Enliva LLC"
+                           Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

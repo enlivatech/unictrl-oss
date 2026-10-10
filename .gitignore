@@ -1,0 +1,14 @@
+.DS_Store
+.build/
+**/bin/
+**/obj/
+**/.vs/
+*.user
+settings.json
+*.log
+.env
+.env.*
+*.p12
+*.pfx
+__pycache__/
+*.pyc

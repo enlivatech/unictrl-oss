@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><g transform="translate(-104.9 -104.9) scale(1.2048)"><defs>
+  <linearGradient id="bg" x1="140" y1="140" x2="900" y2="900" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0B5550"/><stop offset="1" stop-color="#26957F"/>
+  </linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.97"/>
+    <stop offset="1" stop-color="#E8F3F1" stop-opacity="0.95"/>
+  </linearGradient>
+  <linearGradient id="glassBack" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.22"/>
+  </linearGradient>
+  <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.95"/>
+  </linearGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+    <feGaussianBlur stdDeviation="22"/>
+  </filter>
+  <filter id="ambient" x="-40%" y="-40%" width="180%" height="190%"><feGaussianBlur stdDeviation="34"/></filter>
+  <filter id="contact" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur stdDeviation="9"/></filter>
+  <linearGradient id="sheenTop" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.07"/>
+    <stop offset="0.28" stop-color="#FFFFFF" stop-opacity="0.015"/>
+    <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    <stop offset="0.78" stop-color="#05322F" stop-opacity="0"/>
+    <stop offset="1" stop-color="#05322F" stop-opacity="0.22"/>
+  </linearGradient>
+  <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+    <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="cardSheen" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/>
+    <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="cardEdge" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="0.3" stop-color="#FFFFFF" stop-opacity="0.35"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.15"/>
+  </linearGradient>
+</defs><path d="M 283 97 H 741 C 843.3 97 927 180.7 927 283 V 741 C 927 843.3 843.3 927 741 927 H 283 C 180.7 927 97 843.3 97 741 V 283 C 97 180.7 180.7 97 283 97 Z" fill="url(#bg)"/><path d="M 283 97 H 741 C 843.3 97 927 180.7 927 283 V 741 C 927 843.3 843.3 927 741 927 H 283 C 180.7 927 97 843.3 97 741 V 283 C 97 180.7 180.7 97 283 97 Z" fill="url(#sheenTop)"/><path d="M 283 97 H 741 C 843.3 97 927 180.7 927 283 V 741 C 927 843.3 843.3 927 741 927 H 283 C 180.7 927 97 843.3 97 741 V 283 C 97 180.7 180.7 97 283 97 Z" fill="none" stroke="url(#rim)" stroke-width="6"/><g transform="translate(0.93 -61.54) scale(1.1357)"><rect x="186" y="326" width="348" height="270" rx="44" fill="#05322F" fill-opacity="0.18" filter="url(#ambient)"/>
+<rect x="176" y="307" width="368" height="270" rx="44" fill="#05322F" fill-opacity="0.12" filter="url(#contact)"/>
+<rect x="170" y="300" width="380" height="270" rx="44" fill="url(#glassBack)"/>
+<rect x="172.5" y="302.5" width="375" height="265" rx="42" fill="none" stroke="url(#cardEdge)" stroke-opacity="0.75" stroke-width="5"/>
+<rect x="266" y="386" width="348" height="270" rx="44" fill="#05322F" fill-opacity="0.18" filter="url(#ambient)"/>
+<rect x="256" y="367" width="368" height="270" rx="44" fill="#05322F" fill-opacity="0.12" filter="url(#contact)"/>
+<rect x="250" y="360" width="380" height="270" rx="44" fill="url(#glassBack)"/>
+<rect x="252.5" y="362.5" width="375" height="265" rx="42" fill="none" stroke="url(#cardEdge)" stroke-opacity="0.75" stroke-width="5"/>
+<rect x="346" y="466" width="368" height="290" rx="46" fill="#05322F" fill-opacity="0.42" filter="url(#ambient)"/>
+<rect x="336" y="432" width="388" height="290" rx="46" fill="#05322F" fill-opacity="0.3" filter="url(#contact)"/>
+<rect x="330" y="420" width="400" height="290" rx="46" fill="url(#glass)"/>
+<rect x="330" y="420" width="400" height="290" rx="46" fill="url(#cardSheen)"/>
+<rect x="332.5" y="422.5" width="395" height="285" rx="44" fill="none" stroke="url(#cardEdge)" stroke-opacity="1" stroke-width="5"/></g></g></svg>
