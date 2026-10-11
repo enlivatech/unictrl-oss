@@ -1,0 +1,25 @@
+name: Feature request · 功能建议 · 功能建議
+description: An idea that fits Unictrl's one job, the pointer and keyboard across computers. 一个想法。一個想法。
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Unictrl deliberately does one thing: the pointer and keyboard across computers. Clipboard sharing,
+        file transfer and drag and drop are out of scope. You can write in English or Chinese (简体 / 繁體 都可以).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do? · 你想做到什么 · 你想做到什麼
+      description: The situation and what is missing today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work? · 可以怎么做 · 可以怎麼做
+  - type: input
+    id: setup
+    attributes:
+      label: Your setup · 你的设备 · 你的設備
+      placeholder: e.g. MacBook Air + desktop PC with two monitors, Logitech MX Master 3S

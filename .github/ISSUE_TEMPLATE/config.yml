@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas · 使用提问与交流 · 使用提問與交流
+    url: https://github.com/enlivatech/unictrl-oss/discussions
+    about: How to set it up, adapt it to your devices, or share how you use it.
+  - name: Security problem · 安全问题 · 安全性問題
+    url: https://github.com/enlivatech/unictrl-oss/security/advisories/new
+    about: Report a vulnerability privately. Please do not open a public issue.
+  - name: Enliva website · 官网 · 官方網站
+    url: https://www.enliva.org
+    about: The maker of Unictrl.

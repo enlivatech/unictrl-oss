@@ -132,7 +132,7 @@ Mac 透過事件監聽（event tap）讀取輸入。指標在 Mac 上時，Unict
 
 ## 修改與參與貢獻
 
-[ADAPTING.md](ADAPTING.md)（英文）列出了哪些地方是依照最初那套設備客製的（羅技設備、少數按鍵動作、實際測試過的設備組合、用到的 macOS 私有 API），以及該怎麼修改。歡迎到 <https://github.com/enlivatech/unictrl-oss/issues> 提出 issue 和 pull request；這是一個小型專案，不保證提供支援。安全性問題請依照 [SECURITY.md](SECURITY.md) 私下回報。
+[ADAPTING.md](ADAPTING.md)（英文）列出了哪些地方是依照最初那套設備客製的（羅技設備、少數按鍵動作、實際測試過的設備組合、用到的 macOS 私有 API），以及該怎麼修改。歡迎到 <https://github.com/enlivatech/unictrl-oss/issues> 提出 issue 和 pull request，使用問題和想法可以發到 [Discussions](https://github.com/enlivatech/unictrl-oss/discussions)；這是一個小型專案，不保證提供支援。安全性問題請依照 [SECURITY.md](SECURITY.md) 私下回報。
 
 ## 授權條款
 

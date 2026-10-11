@@ -132,7 +132,7 @@ Mac 通过事件监听（event tap）读取输入。指针在 Mac 上时，Unict
 
 ## 改造与参与贡献
 
-[ADAPTING.md](ADAPTING.md)（英文）列出了哪些地方是按最初那套设备定制的（罗技设备、少数按键动作、实际测试过的设备组合、用到的 macOS 私有 API），以及怎么改。欢迎在 <https://github.com/enlivatech/unictrl-oss/issues> 提 issue 和 pull request；这是一个小项目，不承诺提供支持。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
+[ADAPTING.md](ADAPTING.md)（英文）列出了哪些地方是按最初那套设备定制的（罗技设备、少数按键动作、实际测试过的设备组合、用到的 macOS 私有 API），以及怎么改。欢迎在 <https://github.com/enlivatech/unictrl-oss/issues> 提 issue 和 pull request，使用问题和想法可以发到 [Discussions](https://github.com/enlivatech/unictrl-oss/discussions)；这是一个小项目，不承诺提供支持。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
 
 ## 许可证
 

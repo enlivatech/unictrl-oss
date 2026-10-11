@@ -174,8 +174,9 @@ hitches; a cable on either computer helps, and the connection checklist says wha
 
 [ADAPTING.md](ADAPTING.md) lists what is specific to the original setup (Logitech devices, a few key
 actions, the topology that has been tested, the macOS private APIs used) and how to change it. Issues and
-pull requests are welcome at <https://github.com/enlivatech/unictrl-oss/issues>; this is a small project
-with no promise of support. Report security problems privately as described in [SECURITY.md](SECURITY.md).
+pull requests are welcome at <https://github.com/enlivatech/unictrl-oss/issues>, and questions or ideas
+in [Discussions](https://github.com/enlivatech/unictrl-oss/discussions); this is a small project with no
+promise of support. Report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## Licence
 

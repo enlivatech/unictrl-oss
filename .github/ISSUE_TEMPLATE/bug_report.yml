@@ -1,0 +1,71 @@
+name: Bug report · 问题回报 · 問題回報
+description: Something does not work as described. 功能不正常。功能不正常。
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. You can write in English or Chinese (简体 / 繁體 都可以).
+        Security problems: please report privately instead (see SECURITY.md), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? · 发生了什么 · 發生了什麼
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce · 重现步骤 · 重現步驟
+      placeholder: |
+        1. Push the pointer past the Mac's right edge
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Unictrl version or commit · 版本或提交 · 版本或提交
+      placeholder: e.g. 0.1.0 or 17b9bc0
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: Mac model and macOS version · Mac 型号和 macOS 版本 · Mac 型號和 macOS 版本
+      placeholder: e.g. MacBook Pro 14" M3, macOS 26.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: PC model and Windows version · PC 型号和 Windows 版本 · PC 型號和 Windows 版本
+      placeholder: e.g. Surface Laptop 7, Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: devices
+    attributes:
+      label: Keyboard and mouse, and how they connect · 键盘鼠标型号与连接方式 · 鍵盤滑鼠型號與連接方式
+      placeholder: e.g. Logitech MX Keys (Bluetooth), MX Anywhere 3S (Bolt receiver)
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network · 网络 · 網路
+      options:
+        - Both on Wi-Fi
+        - One on Ethernet
+        - Both on Ethernet
+        - Other
+  - type: input
+    id: quality
+    attributes:
+      label: Connection grade in Settings · 设置里的连接质量 · 設定裡的連線品質
+      placeholder: e.g. Smooth, 9 ms
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines · 日志 · 記錄
+      description: |
+        Relevant lines from ~/Library/Logs/Unictrl.log (Mac) and %LOCALAPPDATA%\Unictrl\unictrl.log (Windows).
+        The logs never contain keystrokes; remove device names if you prefer.
+      render: text
