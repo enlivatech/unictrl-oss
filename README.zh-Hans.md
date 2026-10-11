@@ -4,6 +4,10 @@
 
 **一套键盘，一只鼠标，所有电脑。**
 
+![指针从 Mac 移到 Windows PC，键盘也跟着过去](media/unictrl-demo.gif)
+
+▶ 观看 2 分钟介绍影片：[中文配音](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hans-dub.mp4) · [繁体中文字幕](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hant-sub.mp4) · [English](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-en.mp4)
+
 把指针推出 Mac 屏幕的边缘，它就出现在 Windows 电脑上，键盘也跟着过去；推回来，就又回到 Mac。不用切换，不用等待。
 
 键盘和鼠标一直连在 Mac 上，Unictrl 通过局域网把输入加密转发给 PC。用起来就像苹果的"通用控制"，只不过这次连接的是 Mac 和 Windows。两端都是原生应用：macOS 上是 SwiftUI 菜单栏应用，Windows 上是 WinUI 3 应用。

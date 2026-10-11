@@ -4,6 +4,10 @@
 
 **一組鍵盤，一個滑鼠，所有電腦。**
 
+![指標從 Mac 移到 Windows PC，鍵盤也跟著過去](media/unictrl-demo.gif)
+
+▶ 觀看 2 分鐘介紹影片：[繁體中文字幕](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hant-sub.mp4) · [中文配音（簡體字幕）](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hans-dub.mp4) · [English](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-en.mp4)
+
 把指標推出 Mac 螢幕的邊緣，它就出現在 Windows 電腦上，鍵盤也跟著過去；推回來，就又回到 Mac。不用切換，不用等待。
 
 鍵盤和滑鼠一直連在 Mac 上，Unictrl 透過區域網路把輸入加密轉送給 PC。用起來就像 Apple 的「通用控制」，只是這次連接的是 Mac 和 Windows。兩邊都是原生 App：macOS 上是 SwiftUI 選單列 App，Windows 上是 WinUI 3 App。

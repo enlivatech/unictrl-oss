@@ -4,6 +4,10 @@
 
 **One keyboard. One mouse. Every computer.**
 
+![The pointer moves from a Mac onto a Windows PC and the keyboard follows](media/unictrl-demo.gif)
+
+▶ Watch the 2-minute video: [English](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-en.mp4) · [繁體中文字幕](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hant-sub.mp4) · [中文配音](https://github.com/enlivatech/unictrl-oss/releases/download/v0.1.0/unictrl-promo-zh-hans-dub.mp4)
+
 Push your pointer past the edge of your Mac's screen and it appears on your Windows PC. Your keyboard
 follows. Push it back and you are on the Mac again. No switching, no waiting.
 
