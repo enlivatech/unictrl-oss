@@ -54,7 +54,7 @@
                         <TextBlock x:Name="ScreensHint" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    Text="Drag the screens to match your desk; right-click one to rename it. Your Mac keeps both." />
-                        <Grid Height="160" CornerRadius="6" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
+                        <Grid Height="240" CornerRadius="6" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
                             <Canvas x:Name="ScreensCanvas" SizeChanged="OnCanvasSizeChanged" />
                             <TextBlock x:Name="ScreensPlaceholder" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"

@@ -31,7 +31,8 @@ internal sealed class Injector
     private readonly bool[] heldButtons = new bool[5];
     private double x, y, pixelsPerMm = 8, wheelY, wheelX, rawX, rawY;
     /// Edges that lead to another screen (the Mac or another PC); the pointer leaves through these.
-    private bool openLeft, openRight = true;
+    private int openEdges = 4;
+    public ArrangementInfo? Arrangement { get; set; }
 
     public Injector(Settings settings)
     {
@@ -42,16 +43,16 @@ internal sealed class Injector
     public bool Active { get; private set; }
 
     /// Which way the pointer left: false = left edge, true = right edge.
-    public readonly record struct Exit(float YMm, bool Right);
+    public readonly record struct Exit(float AlongMm, ScreenEdge Edge);
 
-    public void Enter(float yMm, bool fromRight, bool leftOpen, bool rightOpen)
+    public void Enter(float yMm, ScreenEdge edge, int flags)
     {
         CursorHider.Show("enter");
         var monitor = Displays.Primary(widthMmOverride);
         pixelsPerMm = monitor.PixelsPerMm;
-        SetOpenEdges(fromRight, leftOpen, rightOpen);
-        x = fromRight ? monitor.Bounds.Right - 2 : monitor.Bounds.Left + 1;
-        y = Math.Clamp(monitor.CenterY + yMm * pixelsPerMm, monitor.Bounds.Top, monitor.Bounds.Bottom - 1);
+        SetOpenEdges(edge, flags);
+        var b = monitor.Bounds;
+        (x, y) = ArrangementInfo.EntryPoint(new ScreenRect(b.Left, b.Top, b.Width, b.Height), pixelsPerMm, edge, yMm);
         wheelX = wheelY = rawX = rawY = 0;
         Active = true;
         MoveTo(x, y);
@@ -59,12 +60,12 @@ internal sealed class Injector
     }
 
     /// A new session took over while the pointer was already here: carry on from where it is.
-    public void Resume(bool fromRight, bool leftOpen, bool rightOpen)
+    public void Resume(ScreenEdge edge, int flags)
     {
         CursorHider.Show("enter");
         var monitor = Displays.Primary(widthMmOverride);
         pixelsPerMm = monitor.PixelsPerMm;
-        SetOpenEdges(fromRight, leftOpen, rightOpen);
+        SetOpenEdges(edge, flags);
         if (Native.GetCursorPos(out var at)) { x = at.X; y = at.Y; }
         wheelX = wheelY = rawX = rawY = 0;
         Active = true;
@@ -72,11 +73,28 @@ internal sealed class Injector
     }
 
     /// A Mac from before multi-device support sends no edge flags: only the entry edge leads back.
-    private void SetOpenEdges(bool fromRight, bool leftOpen, bool rightOpen)
+    private void SetOpenEdges(ScreenEdge edge, int flags)
     {
-        if (!leftOpen && !rightOpen) (leftOpen, rightOpen) = (!fromRight, fromRight);
-        openLeft = leftOpen;
-        openRight = rightOpen;
+        openEdges = flags & 30;
+        if (openEdges == 0) openEdges = 2 << (int)edge;
+    }
+
+    private bool CanExit(ScreenEdge edge, MonitorGeometry monitor, double atX, double atY)
+    {
+        if ((openEdges & (2 << (int)edge)) == 0) return false;
+        var along = edge is ScreenEdge.Left or ScreenEdge.Right
+            ? (atY - monitor.CenterY) / monitor.PixelsPerMm
+            : (atX - (monitor.Bounds.Left + monitor.Bounds.Right) / 2.0) / monitor.PixelsPerMm;
+        return Arrangement?.Supports2D != true || Arrangement.CanExit(edge, along);
+    }
+
+    private Exit ExitThrough(ScreenEdge edge, MonitorGeometry monitor, double atX, double atY)
+    {
+        var along = edge is ScreenEdge.Left or ScreenEdge.Right
+            ? (Math.Clamp(atY, monitor.Bounds.Top, monitor.Bounds.Bottom - 1) - monitor.CenterY) / monitor.PixelsPerMm
+            : (Math.Clamp(atX, monitor.Bounds.Left, monitor.Bounds.Right - 1) - (monitor.Bounds.Left + monitor.Bounds.Right) / 2.0) / monitor.PixelsPerMm;
+        Leave(edge.ToString().ToLowerInvariant() + "_edge");
+        return new Exit((float)along, edge);
     }
 
     /// Returns where the pointer left when it crosses an open outer edge.
@@ -93,14 +111,10 @@ internal sealed class Injector
         var current = Displays.At((int)Math.Round(x), (int)Math.Round(y));
         x += dxMm * pixelsPerMm;
         y += dyMm * pixelsPerMm;
-        var outRight = openRight && x >= current.Bounds.Right && !Displays.Exists(current.Bounds.Right, (int)Math.Round(y));
-        var outLeft = openLeft && x < current.Bounds.Left && !Displays.Exists(current.Bounds.Left - 1, (int)Math.Round(y));
-        if (outRight || outLeft)
-        {
-            var yMm = (float)((Math.Clamp(y, current.Bounds.Top, current.Bounds.Bottom - 1) - current.CenterY) / pixelsPerMm);
-            Leave(outRight ? "right_edge" : "left_edge");
-            return new Exit(yMm, outRight);
-        }
+        if (dxMm > 0 && x >= current.Bounds.Right && !Displays.Exists(current.Bounds.Right, (int)Math.Round(y)) && CanExit(ScreenEdge.Right, current, x, y)) return ExitThrough(ScreenEdge.Right, current, x, y);
+        if (dxMm < 0 && x < current.Bounds.Left && !Displays.Exists(current.Bounds.Left - 1, (int)Math.Round(y)) && CanExit(ScreenEdge.Left, current, x, y)) return ExitThrough(ScreenEdge.Left, current, x, y);
+        if (dyMm > 0 && y >= current.Bounds.Bottom && !Displays.Exists((int)Math.Round(x), current.Bounds.Bottom) && CanExit(ScreenEdge.Bottom, current, x, y)) return ExitThrough(ScreenEdge.Bottom, current, x, y);
+        if (dyMm < 0 && y < current.Bounds.Top && !Displays.Exists((int)Math.Round(x), current.Bounds.Top - 1) && CanExit(ScreenEdge.Top, current, x, y)) return ExitThrough(ScreenEdge.Top, current, x, y);
         var target = Displays.At((int)Math.Round(x), (int)Math.Round(y));
         x = Math.Clamp(x, target.Bounds.Left, target.Bounds.Right - 1);
         y = Math.Clamp(y, target.Bounds.Top, target.Bounds.Bottom - 1);
@@ -123,14 +137,10 @@ internal sealed class Injector
         if (Native.GetCursorPos(out var at))
         {
             var monitor = Displays.At(at.X, at.Y);
-            var outRight = openRight && ix > 0 && at.X >= monitor.Bounds.Right - 1 && !Displays.Exists(monitor.Bounds.Right, at.Y);
-            var outLeft = openLeft && ix < 0 && at.X <= monitor.Bounds.Left && !Displays.Exists(monitor.Bounds.Left - 1, at.Y);
-            if (outRight || outLeft)
-            {
-                var yMm = (float)((at.Y - monitor.CenterY) / monitor.PixelsPerMm);
-                Leave(outRight ? "right_edge" : "left_edge");
-                return new Exit(yMm, outRight);
-            }
+            if (ix > 0 && at.X >= monitor.Bounds.Right - 1 && !Displays.Exists(monitor.Bounds.Right, at.Y) && CanExit(ScreenEdge.Right, monitor, at.X, at.Y)) return ExitThrough(ScreenEdge.Right, monitor, at.X, at.Y);
+            if (ix < 0 && at.X <= monitor.Bounds.Left && !Displays.Exists(monitor.Bounds.Left - 1, at.Y) && CanExit(ScreenEdge.Left, monitor, at.X, at.Y)) return ExitThrough(ScreenEdge.Left, monitor, at.X, at.Y);
+            if (iy > 0 && at.Y >= monitor.Bounds.Bottom - 1 && !Displays.Exists(at.X, monitor.Bounds.Bottom) && CanExit(ScreenEdge.Bottom, monitor, at.X, at.Y)) return ExitThrough(ScreenEdge.Bottom, monitor, at.X, at.Y);
+            if (iy < 0 && at.Y <= monitor.Bounds.Top && !Displays.Exists(at.X, monitor.Bounds.Top - 1) && CanExit(ScreenEdge.Top, monitor, at.X, at.Y)) return ExitThrough(ScreenEdge.Top, monitor, at.X, at.Y);
         }
         if (ix != 0 || iy != 0)
         {

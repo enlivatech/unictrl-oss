@@ -46,9 +46,9 @@ internal sealed class Receiver : IDisposable
     }
 
     /// Asks the Mac to move screens; it answers with the arrangement it saved.
-    public void EditArrangement(IEnumerable<string> order, IReadOnlyDictionary<string, double> offsets)
+    public void EditArrangement(IEnumerable<string> order, IReadOnlyDictionary<string, double> offsets, IReadOnlyDictionary<string, ScreenPosition>? positions = null)
     {
-        try { send?.Invoke(Messages.ArrangementEdit(ArrangementInfo.Edit(order, offsets))); }
+        try { send?.Invoke(Messages.ArrangementEdit(ArrangementInfo.Edit(order, offsets, positions))); }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
     }
 
@@ -99,6 +99,7 @@ internal sealed class Receiver : IDisposable
                 if (Arrangement is not null)
                 {
                     Arrangement = null;
+                    injector.Arrangement = null;
                     ArrangementChanged?.Invoke(null);
                 }
                 if (Quality is not null)
@@ -221,11 +222,11 @@ internal sealed class Receiver : IDisposable
         {
             case MessageType.Enter when reader.Has(4):
                 var entryMm = reader.F32();
-                var fromRight = reader.Has(1) && reader.U8() == 1;
+                var edge = reader.Has(1) ? (ScreenEdge)reader.U8() : ScreenEdge.Left;
+                if (!Enum.IsDefined(edge)) edge = ScreenEdge.Left;
                 var flags = reader.Has(1) ? reader.U8() : 0;
-                bool leftOpen = (flags & 2) != 0, rightOpen = (flags & 4) != 0;
-                if ((flags & 1) != 0) injector.Resume(fromRight, leftOpen, rightOpen);
-                else injector.Enter(entryMm, fromRight, leftOpen, rightOpen);
+                if ((flags & 1) != 0) injector.Resume(edge, flags);
+                else injector.Enter(entryMm, edge, flags);
                 break;
             case MessageType.Move or MessageType.MoveRaw when reader.Has(8):
             {
@@ -264,6 +265,7 @@ internal sealed class Receiver : IDisposable
                 if (ArrangementInfo.Parse(reader.Rest()) is { } arrangement)
                 {
                     Arrangement = arrangement;
+                    injector.Arrangement = arrangement;
                     ArrangementChanged?.Invoke(arrangement);
                 }
                 break;

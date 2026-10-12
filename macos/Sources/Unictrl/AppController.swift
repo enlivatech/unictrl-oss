@@ -235,6 +235,7 @@ import ServiceManagement
         var new = new
         new.normalize(peers: settings.peers.map(\.id))
         guard new != settings.arrangement else { return }
+        guard Arrangement.connected(new.rectangles(sizes: screenSizes)) else { broadcastArrangement(); return }
         settings.arrangement = new
         settings.save()
         arrangement = new
@@ -455,20 +456,39 @@ import ServiceManagement
 
     private func target(_ id: String, requireFresh: Bool = true) -> RemoteTarget? {
         guard id != Arrangement.mac, isAvailable(id, requireFresh: requireFresh) else { return nil }
-        let order = settings.arrangement
-        // An edge leads on if the next PC is up, and always toward the Mac: the pointer must be able to
-        // get home even when a PC in between went away.
+        let row = settings.arrangement
+        guard let rect = row.rectangles(sizes: screenSizes)[id] else { return nil }
         func open(_ side: Side) -> Bool {
-            guard let next = order.neighbor(of: id, on: side) else { return false }
-            return order.macSide(from: id) == side || isAvailable(next, requireFresh: false)
+            row.neighbors(of: id, on: side, sizes: screenSizes).contains {
+                $0 == Arrangement.mac || isAvailable($0, requireFresh: false)
+            }
         }
-        return RemoteTarget(id: id, offsetMm: order.offset(of: id), openLeft: open(.left), openRight: open(.right))
+        return RemoteTarget(id: id, offsetMm: rect.midY, xMm: rect.midX, widthMm: rect.width, heightMm: rect.height,
+                            openLeft: open(.left), openRight: open(.right), openTop: open(.top), openBottom: open(.bottom))
+    }
+
+    private var screenSizes: [String: CGSize] {
+        Dictionary(uniqueKeysWithValues: settings.arrangement.order.map { ($0, screenSize(of: $0)) })
+    }
+
+    func placePeer(_ id: String, on side: Side) {
+        let size = screenSize(of: id), mac = macScreenMm
+        let point: CGPoint
+        switch side {
+        case .left: point = CGPoint(x: -(mac.width + size.width) / 2, y: 0)
+        case .right: point = CGPoint(x: (mac.width + size.width) / 2, y: 0)
+        case .top: point = CGPoint(x: 0, y: -(mac.height + size.height) / 2)
+        case .bottom: point = CGPoint(x: 0, y: (mac.height + size.height) / 2)
+        }
+        setArrangement(settings.arrangement.placing(id, at: point, sizes: screenSizes))
     }
 
     /// Tells the PC under the pointer which of its edges lead on, after a PC came or went.
     private func refreshEdges() {
         guard disconnectGrace == nil, let current = capture.published.remote, let fresh = target(current.id, requireFresh: false),
-              fresh.openLeft != current.openLeft || fresh.openRight != current.openRight else { return }
+              fresh.openLeft != current.openLeft || fresh.openRight != current.openRight ||
+              fresh.openTop != current.openTop || fresh.openBottom != current.openBottom ||
+              fresh.xMm != current.xMm || fresh.offsetMm != current.offsetMm else { return }
         capture.resumeRemote(fresh)
     }
 
@@ -482,12 +502,15 @@ import ServiceManagement
     }
 
     private func arrangementMessage(for id: String) -> ArrangementMessage {
+        let rects = settings.arrangement.rectangles(sizes: screenSizes)
         let screens = settings.arrangement.order.map { screen -> ArrangementMessage.Screen in
             let size = screenSize(of: screen)
             let name = name(of: screen)
-            return .init(id: screen, name: name, widthMm: (size.width * 10).rounded() / 10, heightMm: (size.height * 10).rounded() / 10,
-                         offsetMm: (settings.arrangement.offset(of: screen) * 10).rounded() / 10,
-                         online: screen == Arrangement.mac || server.isConnected(screen))
+            var info = ArrangementMessage.Screen(id: screen, name: name,
+                widthMm: Double((size.width * 10).rounded() / 10), heightMm: Double((size.height * 10).rounded() / 10),
+                offsetMm: settings.arrangement.offset(of: screen), online: screen == Arrangement.mac || server.isConnected(screen))
+            if let rect = rects[screen] { info.xMm = Double(rect.midX); info.yMm = Double(rect.midY) }
+            return info
         }
         return ArrangementMessage(you: id, screens: screens)
     }
@@ -835,11 +858,13 @@ import ServiceManagement
     }
 
     private func pushTargets() {
-        func side(_ side: Side) -> RemoteTarget? {
-            guard enabled, channelAllowsSharing, let id = settings.arrangement.neighbor(of: Arrangement.mac, on: side) else { return nil }
-            return target(id)
+        var targets: [Side: [RemoteTarget]] = [:]
+        if enabled && channelAllowsSharing {
+            for side in Side.allCases {
+                targets[side] = settings.arrangement.neighbors(of: Arrangement.mac, on: side, sizes: screenSizes).compactMap { target($0) }
+            }
         }
-        capture.setTargets(left: side(.left), right: side(.right))
+        capture.setTargets(targets)
     }
 
     private func heartbeat() {
@@ -890,22 +915,22 @@ import ServiceManagement
             guard let current = capture.published.remote, current.id == id else { break }
             let yMm = reader.f32().map(Double.init)
             // v1 PCs only leave back the way the pointer came in.
-            let side: Side = reader.u8().map { $0 == 0 ? .left : .right } ?? capture.published.entryEdge
+            let side = reader.u8().flatMap(Side.init(rawValue:)) ?? capture.published.entryEdge
             let row = settings.arrangement
-            let here = row.offset(of: id)
-            let next = row.neighbor(of: id, on: side)
-            // The Mac edge facing this PC, as the screens are arranged now.
-            let macEdge = row.macSide(from: id)?.opposite
+            guard let here = row.rectangles(sizes: screenSizes)[id] else { break }
+            let along = (yMm ?? 0) + (side.horizontal ? here.midY : here.midX)
+            let next = row.neighbors(of: id, on: side, sizes: screenSizes, coordinate: along).first
             if let next, next != Arrangement.mac, let target = target(next, requireFresh: false) {
-                let y = (yMm ?? 0) + here - target.offsetMm
-                capture.switchRemote(to: target, yMm: y, edge: side.opposite)
+                let offset = side.horizontal ? target.offsetMm : target.xMm
+                capture.switchRemote(to: target, yMm: along - offset, edge: side.opposite)
                 remoteID = target.id
                 lastRemoteID = target.id
-            } else if next == nil || next == Arrangement.mac || row.macSide(from: id) == side {
-                // Home, including past a PC that went offline in between.
-                capture.returnLocal(yMm: yMm.map { $0 + here }, reason: "leave", macEdge: macEdge)
+            } else if next == Arrangement.mac {
+                capture.returnLocal(yMm: along, reason: "leave", macEdge: side.opposite)
             } else if let target = target(id, requireFresh: false) {
-                capture.resumeRemote(target) // the next PC away from the Mac just went away: stay here
+                capture.resumeRemote(target)
+            } else {
+                capture.returnLocal(yMm: nil, reason: "unavailable")
             }
         case .screen:
             if let width = reader.f32(), let height = reader.f32(), width > 50, height > 30,

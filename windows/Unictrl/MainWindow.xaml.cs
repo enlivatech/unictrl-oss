@@ -544,11 +544,10 @@ public sealed partial class MainWindow : Window
     private string? draggingId;
     private Point dragStart;
     private FrameworkElement? draggingTile;
-    private const double MinOverlapMm = 30;
 
     private void OnCanvasSizeChanged(object sender, SizeChangedEventArgs e) => RenderScreens();
 
-    /// The screens edge to edge at their physical sizes, each centred at its offset below the Mac.
+    /// The two-dimensional screen layout at its physical sizes.
     private void RenderScreens()
     {
         ScreensCanvas.Children.Clear();
@@ -559,19 +558,17 @@ public sealed partial class MainWindow : Window
         var height = ScreensCanvas.ActualHeight;
         if (screens.Count == 0 || width <= 0 || height <= 0) return;
 
-        var x = 0.0;
-        var mm = new List<(ScreenInfo, CanvasRect)>();
-        foreach (var screen in screens)
-        {
-            mm.Add((screen, new CanvasRect(x, screen.OffsetMm - screen.HeightMm / 2, screen.WidthMm, screen.HeightMm)));
-            x += screen.WidthMm;
-        }
-        var top = mm.Min(m => m.Item2.Top);
+        var rectangles = arrangement!.Rectangles();
+        var mm = screens.Select(screen => (screen, rectangles[screen.Id])).ToList();
+        var left = mm.Min(m => m.Item2.X);
+        var right = mm.Max(m => m.Item2.Right);
+        var top = mm.Min(m => m.Item2.Y);
         var bottom = mm.Max(m => m.Item2.Bottom);
         const double padding = 14;
-        mmScale = Math.Min((width - 2 * padding) / x, (height - 2 * padding) / Math.Max(bottom - top, 200));
-        var originX = (width - x * mmScale) / 2;
+        mmScale = Math.Max(0.01, Math.Min((width - 2 * padding) / (right - left), (height - 2 * padding) / Math.Max(bottom - top, 200)));
+        var originX = (width - (right - left) * mmScale) / 2 - left * mmScale;
         var originY = (height - (bottom - top) * mmScale) / 2 - top * mmScale;
+        ScreensHint.Text = arrangement.Supports2D ? "Drag any screen to a shared edge; right-click to choose a position." : "Update the Mac app to arrange screens above or below.";
         foreach (var (screen, rect) in mm)
         {
             var r = new CanvasRect(originX + rect.X * mmScale, originY + rect.Y * mmScale, rect.Width * mmScale, rect.Height * mmScale);
@@ -611,7 +608,7 @@ public sealed partial class MainWindow : Window
         };
         Canvas.SetLeft(tile, rect.X + 1.5);
         Canvas.SetTop(tile, rect.Y + 1.5);
-        if (!screen.IsMac)
+        if (arrangement?.Supports2D == true)
         {
             tile.PointerPressed += OnTilePressed;
             tile.PointerMoved += OnTileMoved;
@@ -621,7 +618,18 @@ public sealed partial class MainWindow : Window
         }
         var rename = new MenuFlyoutItem { Text = "Rename…", Icon = new FontIcon { Glyph = "\uE8AC" } };
         rename.Click += (_, _) => RenameScreen(screen);
-        tile.ContextFlyout = new MenuFlyout { Items = { rename } };
+        var menu = new MenuFlyout { Items = { rename } };
+        if (!screen.IsMac && arrangement?.Supports2D == true)
+        {
+            foreach (var (title, side) in new[] { ("Windows above Mac", ScreenEdge.Top), ("Windows below Mac", ScreenEdge.Bottom),
+                ("Windows left of Mac", ScreenEdge.Left), ("Windows right of Mac", ScreenEdge.Right) })
+            {
+                var item = new MenuFlyoutItem { Text = title };
+                item.Click += (_, _) => { if (arrangement is not null) CommitLayout(arrangement.Place(screen.Id, side)); };
+                menu.Items.Add(item);
+            }
+        }
+        tile.ContextFlyout = menu;
         return tile;
     }
 
@@ -709,29 +717,18 @@ public sealed partial class MainWindow : Window
     private void Drop(string id, double dx, double dy)
     {
         if (arrangement is null) return;
-        var moved = frames.First(f => f.Screen.Id == id);
-        var centerX = moved.Rect.X + moved.Rect.Width / 2 + dx;
-        var others = frames.Where(f => f.Screen.Id != id).ToList();
-        var index = others.FindIndex(f => centerX < f.Rect.X + f.Rect.Width / 2);
-        var order = others.Select(f => f.Screen).ToList();
-        order.Insert(index < 0 ? order.Count : index, moved.Screen);
+        var rect = arrangement.Rectangles()[id];
+        CommitLayout(arrangement.Drop(id, rect.CenterX + dx / mmScale, rect.CenterY + dy / mmScale));
+    }
 
-        var offset = moved.Screen.OffsetMm + dy / mmScale;
-        var at = order.IndexOf(moved.Screen);
-        foreach (var neighbor in new[] { at > 0 ? order[at - 1] : null, at < order.Count - 1 ? order[at + 1] : null })
-        {
-            if (neighbor is null) continue;
-            var limit = Math.Max(0, (moved.Screen.HeightMm + neighbor.HeightMm) / 2 - MinOverlapMm);
-            offset = Math.Clamp(offset, neighbor.OffsetMm - limit, neighbor.OffsetMm + limit);
-            if (Math.Abs(offset - neighbor.OffsetMm) < 6) offset = neighbor.OffsetMm; // snap to centred
-        }
-        offset = Math.Round(offset, 1);
-        order[at] = moved.Screen with { OffsetMm = offset };
-        arrangement = arrangement with { Screens = order };
+    private void CommitLayout(ArrangementInfo next)
+    {
+        arrangement = next;
         RenderScreens();
-        var offsets = order.Where(s => !s.IsMac).ToDictionary(s => s.Id, s => s.OffsetMm);
-        receiver?.EditArrangement(order.Select(s => s.Id), offsets);
-        Log.Write("arrangement_edit", string.Join(",", order.Select(s => s.IsMac ? "mac" : s.Id[..Math.Min(8, s.Id.Length)])));
+        var offsets = next.Screens.Where(s => !s.IsMac).ToDictionary(s => s.Id, s => s.YMm ?? s.OffsetMm);
+        var positions = next.Screens.Where(s => !s.IsMac).ToDictionary(s => s.Id, s => new ScreenPosition(s.XMm ?? 0, s.YMm ?? s.OffsetMm));
+        receiver?.EditArrangement(next.Screens.Select(s => s.Id), offsets, positions);
+        Log.Write("arrangement_edit", "2D");
     }
 }
 

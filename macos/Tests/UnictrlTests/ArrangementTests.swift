@@ -88,10 +88,59 @@ import Testing
         #expect(result.offset(of: "pc") == 0)
     }
 
-    @Test func offsetKeepsThirtyMillimetresOfSharedEdge() {
+    @Test func largeVerticalMovePlacesPCBelowMac() {
         let layout = layout()
         let result = layout.drop("pc", by: CGSize(width: 0, height: 500 * layout.scale), in: row)
-        // Both screens are 200 mm tall: at most 200 - 30 = 170 mm apart.
-        #expect(abs(result.offset(of: "pc") - 170) < 0.01)
+        #expect(result.positions["pc"]?.y == 200)
+        #expect(result.positions["pc"]?.x == 270)
+    }
+}
+
+@Suite struct TwoDimensionalArrangementTests {
+    private let sizes = [Arrangement.mac: CGSize(width: 300, height: 200), "pc": CGSize(width: 400, height: 250)]
+    private let row = Arrangement(order: [Arrangement.mac, "pc"])
+
+    @Test func aboveAndBelowUseSharedHorizontalEdge() {
+        let above = row.placing("pc", at: CGPoint(x: 0, y: -225), sizes: sizes)
+        #expect(above.positions["pc"] == ScreenPosition(x: 0, y: -225))
+        #expect(above.neighbors(of: Arrangement.mac, on: .top, sizes: sizes) == ["pc"])
+        #expect(above.neighbors(of: "pc", on: .bottom, sizes: sizes, coordinate: 75) == [Arrangement.mac])
+        #expect(above.neighbors(of: "pc", on: .bottom, sizes: sizes, coordinate: 175).isEmpty)
+        #expect(above.neighbors(of: Arrangement.mac, on: .left, sizes: sizes).isEmpty)
+        let below = above.placing("pc", at: CGPoint(x: 0, y: 225), sizes: sizes)
+        #expect(below.positions["pc"] == ScreenPosition(x: 0, y: 225))
+        #expect(below.neighbors(of: Arrangement.mac, on: .bottom, sizes: sizes) == ["pc"])
+    }
+
+    @Test func draggingMacChangesRelativePosition() {
+        let rect = row.rectangles(sizes: sizes)["pc"]!
+        let moved = row.placing(Arrangement.mac, at: CGPoint(x: rect.midX, y: rect.midY + 225), sizes: sizes)
+        #expect(moved.positions["pc"] == ScreenPosition(x: 0, y: -225))
+        #expect(moved.rectangles(sizes: sizes)[Arrangement.mac]!.midX == 0)
+    }
+
+    @Test func oldSettingsDecodeAndNewPositionsRoundTrip() throws {
+        let decoded = try JSONDecoder().decode(Arrangement.self, from: Data(#"{"order":["mac","pc"],"offsets":{"pc":20}}"#.utf8))
+        #expect(decoded.positions.isEmpty)
+        #expect(decoded.rectangles(sizes: sizes)["pc"]!.midY == 20)
+        let above = row.placing("pc", at: CGPoint(x: 0, y: -225), sizes: sizes)
+        #expect(try JSONDecoder().decode(Arrangement.self, from: JSONEncoder().encode(above)) == above)
+    }
+
+    @Test func draggingCanvasMacUsesTheSameLayout() {
+        let tiles = sizes.map { ScreenTile(id: $0.key, name: $0.key, sizeMm: $0.value, online: true) }
+        let layout = ScreensCanvas.Layout(tiles: tiles, arrangement: row, in: CGSize(width: 640, height: 300), padding: 14)
+        let mac = layout.frames.first { $0.id == Arrangement.mac }!.rect
+        let pc = layout.frames.first { $0.id == "pc" }!.rect
+        let moved = layout.drop(Arrangement.mac, by: CGSize(width: pc.midX - mac.midX, height: 225 * layout.scale), in: row)
+        #expect(moved.positions["pc"] == ScreenPosition(x: 0, y: -225))
+    }
+
+    @Test func stackedScreensRemainConnectedWithoutOverlap() {
+        let sizes = ["mac": CGSize(width: 300, height: 200), "a": CGSize(width: 300, height: 200), "b": CGSize(width: 300, height: 200)]
+        let row = Arrangement(order: ["mac", "a", "b"])
+        let vertical = row.placing("b", at: CGPoint(x: 300, y: -200), sizes: sizes)
+        #expect(Arrangement.connected(vertical.rectangles(sizes: sizes)))
+        #expect(vertical.neighbors(of: "a", on: .top, sizes: sizes) == ["b"])
     }
 }

@@ -22,9 +22,7 @@ struct ScreenTile: Identifiable, Equatable {
     var isMac: Bool { id == Arrangement.mac }
 }
 
-/// The screens in a row at their real physical sizes, like the Displays pane in System Settings.
-/// When `onCommit` is set, PCs can be dragged: left or right to change the order, up or down to line
-/// their screens up with their neighbours. The Mac stays put; everything is placed relative to it.
+/// Screens at their physical sizes. Any screen can be dragged onto any shared edge.
 struct ScreensCanvas: View {
     var tiles: [ScreenTile]
     var arrangement: Arrangement
@@ -36,9 +34,6 @@ struct ScreensCanvas: View {
     @State private var dragging: String?
     @State private var translation: CGSize = .zero
 
-    /// Screens that share less than this height could not pass the pointer comfortably.
-    private static let minOverlapMm = 30.0
-
     var body: some View {
         GeometryReader { geometry in
             let layout = Layout(tiles: tiles, arrangement: arrangement, in: geometry.size, padding: compact ? 6 : 14)
@@ -49,15 +44,16 @@ struct ScreensCanvas: View {
                                                              dy: isDragged ? translation.height : 0),
                          lifted: isDragged)
                         .zIndex(isDragged ? 1 : 0)
-                        .gesture(onCommit == nil || item.tile.isMac ? nil : drag(item.id, layout: layout))
+                        .highPriorityGesture(onCommit == nil ? nil : drag(item.id, layout: layout))
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .coordinateSpace(name: "screens")
         }
     }
 
     private func drag(_ id: String, layout: Layout) -> some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("screens"))
             .onChanged { value in
                 dragging = id
                 translation = value.translation
@@ -103,12 +99,12 @@ struct ScreensCanvas: View {
             }
         }
         .opacity(tile.online || active ? 1 : 0.6)
-        .frame(width: rect.width - 3, height: rect.height - 3)
+        .frame(width: max(0, rect.width - 3), height: max(0, rect.height - 3))
         .offset(x: rect.minX + 1.5, y: rect.minY + 1.5)
         .contentShape(Rectangle())
     }
 
-    /// Millimetre layout scaled to the view: screens edge to edge in order, each centred at its offset.
+    /// Two-dimensional millimetre layout scaled to the view.
     struct Layout {
         struct Item { let id: String; let tile: ScreenTile; let rect: CGRect }
         let frames: [Item]
@@ -119,17 +115,12 @@ struct ScreensCanvas: View {
             let byID = Dictionary(tiles.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             let ordered = arrangement.order.compactMap { byID[$0] }
             sizes = byID.mapValues(\.sizeMm)
-            var x = 0.0
-            var mm: [(ScreenTile, CGRect)] = []
-            for tile in ordered {
-                let offset = arrangement.offset(of: tile.id)
-                mm.append((tile, CGRect(x: x, y: offset - tile.sizeMm.height / 2, width: tile.sizeMm.width, height: tile.sizeMm.height)))
-                x += tile.sizeMm.width
-            }
+            let rects = arrangement.rectangles(sizes: sizes)
+            let mm = ordered.compactMap { tile in rects[tile.id].map { (tile, $0) } }
             let bounds = mm.reduce(CGRect.null) { $0.union($1.1) }
             guard !bounds.isNull else { frames = []; scale = 1; return }
             // Leave room for a screen dragged a little past the ends.
-            let s = min((size.width - 2 * padding) / bounds.width, (size.height - 2 * padding) / max(bounds.height, 200))
+            let s = max(0.01, min((size.width - 2 * padding) / bounds.width, (size.height - 2 * padding) / max(bounds.height, 200)))
             scale = s
             let origin = CGPoint(x: (size.width - bounds.width * s) / 2 - bounds.minX * s,
                                  y: (size.height - bounds.height * s) / 2 - bounds.minY * s)
@@ -141,26 +132,9 @@ struct ScreensCanvas: View {
 
         /// The arrangement after dropping `id` moved by `translation` points.
         func drop(_ id: String, by translation: CGSize, in arrangement: Arrangement) -> Arrangement {
-            guard let moved = frames.first(where: { $0.id == id }) else { return arrangement }
-            let centerX = moved.rect.midX + translation.width
-            var result = arrangement
-            result.order.removeAll { $0 == id }
-            let others = frames.filter { $0.id != id }
-            let index = others.firstIndex { centerX < $0.rect.midX } ?? others.count
-            result.order.insert(id, at: index)
-
-            // Height relative to the Mac, kept so it shares enough edge with each neighbour.
-            var offset = arrangement.offset(of: id) + translation.height / scale
-            let height = sizes[id]?.height ?? 190
-            for side in [Side.left, .right] {
-                guard let neighbor = result.neighbor(of: id, on: side) else { continue }
-                let theirs = result.offset(of: neighbor)
-                let limit = max(0, (height + (sizes[neighbor]?.height ?? 190)) / 2 - ScreensCanvas.minOverlapMm)
-                offset = min(theirs + limit, max(theirs - limit, offset))
-                if abs(offset - theirs) < 6 { offset = theirs } // snap to centred
-            }
-            result.offsets[id] = (offset * 10).rounded() / 10
-            return result
+            guard frames.contains(where: { $0.id == id }), let rect = arrangement.rectangles(sizes: sizes)[id] else { return arrangement }
+            return arrangement.placing(id, at: CGPoint(x: rect.midX + translation.width / scale,
+                                                       y: rect.midY + translation.height / scale), sizes: sizes)
         }
     }
 }

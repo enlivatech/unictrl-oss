@@ -22,7 +22,7 @@ final class InputCapture {
     private var remote: RemoteTarget?
     private var entryEdge: Side = .left
     /// The PC next to the Mac on each side, if the pointer may cross to it now (set by the main thread).
-    private var targets: [Side: RemoteTarget] = [:]
+    private var targets: [Side: [RemoteTarget]] = [:]
 
     /// The state as last published to the main thread; read it only there.
     private(set) var published = State()
@@ -50,11 +50,9 @@ final class InputCapture {
     }
 
     /// Which PC the pointer may cross to on each side of the Mac; the main thread keeps this fresh.
-    func setTargets(left: RemoteTarget?, right: RemoteTarget?) {
-        if elsewhere({ self.setTargets(left: left, right: right) }) { return }
-        targets = [:]
-        targets[.left] = left
-        targets[.right] = right
+    func setTargets(_ targets: [Side: [RemoteTarget]]) {
+        if elsewhere({ self.setTargets(targets) }) { return }
+        self.targets = targets
     }
     /// The side of the Mac the pointer left through; it comes back the same way.
     private var macSide: Side = .right
@@ -351,10 +349,19 @@ final class InputCapture {
             if type == .scrollWheel { return handleLocalScroll(event) }
             guard type == .mouseMoved else { return pass }
             recordMoveGap(event)
-            let dx = event.getDoubleValueField(.mouseEventDeltaX)
-            guard dx != 0, Date() >= suppressEdgeUntil, NSEvent.pressedMouseButtons == 0 else { return pass }
-            let side: Side = dx < 0 ? .left : .right
-            if let display = edgeDisplay(at: event.location, side: side), let target = targets[side] {
+            let dx = event.getDoubleValueField(.mouseEventDeltaX), dy = event.getDoubleValueField(.mouseEventDeltaY)
+            guard Date() >= suppressEdgeUntil, NSEvent.pressedMouseButtons == 0 else { return pass }
+            let horizontal: [Side] = dx == 0 ? [] : [dx < 0 ? .left : .right]
+            let vertical: [Side] = dy == 0 ? [] : [dy < 0 ? .top : .bottom]
+            for side in abs(dx) >= abs(dy) ? horizontal + vertical : vertical + horizontal {
+                guard let display = edgeDisplay(at: event.location, side: side) else { continue }
+                let along = side.horizontal ? (event.location.y - display.bounds.midY) / display.pointsPerMm
+                                            : (event.location.x - display.bounds.midX) / display.pointsPerMm
+                guard let target = targets[side]?.first(where: {
+                    let center = side.horizontal ? $0.offsetMm : $0.xMm
+                    let length = side.horizontal ? $0.heightMm : $0.widthMm
+                    return along >= center - length / 2 && along < center + length / 2
+                }) else { continue }
                 crossingEventTime = event.timestamp
                 enterRemote(target, side: side, from: display, at: event.location)
                 return nil
@@ -582,13 +589,22 @@ final class InputCapture {
             point.y >= $0.bounds.minY && point.y < $0.bounds.maxY &&
                 point.x >= $0.bounds.minX && point.x < $0.bounds.maxX
         }) else { return nil }
-        let left = side == .left
-        guard left ? point.x <= display.bounds.minX + 0.5 : point.x >= display.bounds.maxX - 1.5 else { return nil }
-        // Only the outer edge: another Mac display on that side keeps normal behaviour.
-        let hasNeighbor = displays.contains {
-            $0.id != display.id && point.y >= $0.bounds.minY && point.y < $0.bounds.maxY &&
-                (left ? abs($0.bounds.maxX - display.bounds.minX) < 2 : abs($0.bounds.minX - display.bounds.maxX) < 2)
+        let atEdge: Bool
+        switch side {
+        case .left: atEdge = point.x <= display.bounds.minX + 0.5
+        case .right: atEdge = point.x >= display.bounds.maxX - 1.5
+        case .top: atEdge = point.y <= display.bounds.minY + 0.5
+        case .bottom: atEdge = point.y >= display.bounds.maxY - 1.5
         }
+        guard atEdge else { return nil }
+        let beyond: CGPoint
+        switch side {
+        case .left: beyond = CGPoint(x: display.bounds.minX - 1, y: point.y)
+        case .right: beyond = CGPoint(x: display.bounds.maxX + 1, y: point.y)
+        case .top: beyond = CGPoint(x: point.x, y: display.bounds.minY - 1)
+        case .bottom: beyond = CGPoint(x: point.x, y: display.bounds.maxY + 1)
+        }
+        let hasNeighbor = displays.contains { $0.id != display.id && $0.bounds.contains(beyond) }
         return hasNeighbor ? nil : display
     }
 
@@ -614,7 +630,8 @@ final class InputCapture {
         putBack(to: park)
         let shieldDisplay = display.id
         DispatchQueue.main.async { CursorShield.shared.show(on: shieldDisplay) }
-        let yMm = (point.y - display.bounds.midY) / display.pointsPerMm - target.offsetMm
+        let yMm = side.horizontal ? (point.y - display.bounds.midY) / display.pointsPerMm - target.offsetMm
+                                 : (point.x - display.bounds.midX) / display.pointsPerMm - target.xMm
         sendEnter(to: target, yMm: yMm, edge: side.opposite, resume: false)
         Log.write("enter_remote", String(format: "id=%@ y_mm=%.1f ppm=%.3f event_age_ms=%.1f hide_ms=%.1f visible_after_hide=%d",
                                          String(target.id.prefix(8)), yMm, display.pointsPerMm, eventAgeMs, hideMs, visibleAfterHide ? 1 : 0))
@@ -662,8 +679,8 @@ final class InputCapture {
         entryEdge = edge
         var message = MessageWriter(.enter)
         message.f32(Float(yMm))
-        message.u8(edge == .left ? 0 : 1)
-        message.u8((resume ? 1 : 0) | (target.openLeft ? 2 : 0) | (target.openRight ? 4 : 0))
+        message.u8(edge.rawValue)
+        message.u8((resume ? 1 : 0) | (target.openLeft ? 2 : 0) | (target.openRight ? 4 : 0) | (target.openTop ? 8 : 0) | (target.openBottom ? 16 : 0))
         send(message)
         publish()
         sendCapsLock(CGEventSource.flagsState(.hidSystemState).contains(.maskAlphaShift))
@@ -702,10 +719,16 @@ final class InputCapture {
         remoteScroll.stop()
         let display = edge ?? DisplayGeometry.main
         if let display {
-            var y = display.bounds.midY
-            if let yMm { y += yMm * display.pointsPerMm }
+            var x = display.bounds.midX, y = display.bounds.midY
+            if macSide.horizontal {
+                y += (yMm ?? 0) * display.pointsPerMm
+                x = macSide == .left ? display.bounds.minX + 3 : display.bounds.maxX - 3
+            } else {
+                x += (yMm ?? 0) * display.pointsPerMm
+                y = macSide == .top ? display.bounds.minY + 3 : display.bounds.maxY - 3
+            }
+            x = min(display.bounds.maxX - 2, max(display.bounds.minX + 1, x))
             y = min(display.bounds.maxY - 2, max(display.bounds.minY + 1, y))
-            let x = macSide == .left ? display.bounds.minX + 3 : display.bounds.maxX - 3
             CGWarpMouseCursorPosition(CGPoint(x: x, y: y))
         }
         // Re-associating right after the warp avoids macOS's post-warp input freeze.

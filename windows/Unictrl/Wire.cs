@@ -154,8 +154,8 @@ internal static class Messages
     {
         var message = new byte[6];
         message[0] = (byte)MessageType.Leave;
-        BinaryPrimitives.WriteSingleLittleEndian(message.AsSpan(1), exit.YMm);
-        message[5] = exit.Right ? (byte)1 : (byte)0;
+        BinaryPrimitives.WriteSingleLittleEndian(message.AsSpan(1), exit.AlongMm);
+        message[5] = (byte)exit.Edge;
         return message;
     }
 
