@@ -107,3 +107,12 @@ to an online PC with HID++ 0x1814 ChangeHost. The PC's keyboard channel is found
 against the keyboard's HID++ 0x1815 host names (or the channel the PC last reported); the mouse has no
 host names, so it uses the PC's reported mouse channel or, until then, the keyboard's. When the screens
 wake (not on dark wakes) and the session is back, the Mac sends `reclaim` with its own channels.
+
+## Four-direction screen layout extension
+
+Both clients must be updated for vertical layouts. Pairing and encryption are unchanged.
+- Arrangement screens include optional `xMm`, `yMm` (screen-centre coordinates relative to Mac centre) and `layoutVersion: 2`. Old messages retain the row fallback.
+- Arrangement edits include `positions: {id: {x, y}}` alongside legacy `order` and `offsets`. The Mac validates connected shared edges before saving.
+- Enter/leave edge IDs: 0 left, 1 right, 2 top, 3 bottom. The f32 is now along-edge distance from the screen centre: Y for left/right, X for top/bottom.
+- Enter flag bits: 0 resume, 1 left open, 2 right open, 3 top open, 4 bottom open.
+- Crossings use only the overlap shared by adjacent screens. Windows native pointer and physical pointer modes both support four directions.

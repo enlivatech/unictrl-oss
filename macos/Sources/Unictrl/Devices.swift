@@ -18,9 +18,12 @@ struct PeerConfig: Codable, Equatable, Identifiable {
     var mouseHost: Int?
 }
 
-enum Side: Equatable {
-    case left, right
-    var opposite: Side { self == .left ? .right : .left }
+enum Side: UInt8, CaseIterable {
+    case left = 0, right = 1, top = 2, bottom = 3
+    var horizontal: Bool { self == .left || self == .right }
+    var opposite: Side {
+        switch self { case .left: return .right; case .right: return .left; case .top: return .bottom; case .bottom: return .top }
+    }
 }
 
 /// The screens as a row, left to right, with each PC's vertical position. The Mac is "mac" and sits
@@ -29,11 +32,26 @@ struct Arrangement: Codable, Equatable {
     static let mac = "mac"
     var order = [Arrangement.mac]
     var offsets: [String: Double] = [:]
+    /// Screen centres in millimetres, with the Mac at (0, 0). Absent in old row layouts.
+    var positions: [String: ScreenPosition] = [:]
+    init(order: [String] = [Arrangement.mac], offsets: [String: Double] = [:], positions: [String: ScreenPosition] = [:]) {
+        self.order = order; self.offsets = offsets; self.positions = positions
+    }
+
+    private enum CodingKeys: String, CodingKey { case order, offsets, positions }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        order = try c.decode([String].self, forKey: .order)
+        offsets = try c.decodeIfPresent([String: Double].self, forKey: .offsets) ?? [:]
+        positions = try c.decodeIfPresent([String: ScreenPosition].self, forKey: .positions) ?? [:]
+    }
+
 
     func offset(of id: String) -> Double { id == Self.mac ? 0 : offsets[id] ?? 0 }
 
     /// The screen next to `id` on `side`, if any.
     func neighbor(of id: String, on side: Side) -> String? {
+        guard side.horizontal else { return nil }
         guard let i = order.firstIndex(of: id) else { return nil }
         let j = side == .right ? i + 1 : i - 1
         return order.indices.contains(j) ? order[j] : nil
@@ -49,10 +67,14 @@ struct Arrangement: Codable, Equatable {
     mutating func remove(_ id: String) {
         order.removeAll { $0 == id }
         offsets[id] = nil
+        positions[id] = nil
     }
 
     /// The side of `id` the Mac is on (nil for the Mac itself or an unknown screen).
     func macSide(from id: String) -> Side? {
+        if let p = positions[id] {
+            return abs(p.x) > abs(p.y) ? (p.x > 0 ? .left : .right) : (p.y > 0 ? .top : .bottom)
+        }
         guard let here = order.firstIndex(of: id), let mac = order.firstIndex(of: Self.mac), here != mac else { return nil }
         return mac < here ? .left : .right
     }
@@ -64,11 +86,13 @@ struct Arrangement: Codable, Equatable {
         if !order.contains(Self.mac) { order.insert(Self.mac, at: 0) }
         for id in peers where !order.contains(id) { add(id) }
         offsets = offsets.filter { peers.contains($0.key) }
+        positions = positions.filter { peers.contains($0.key) && $0.value.x.isFinite && $0.value.y.isFinite }
     }
 
     mutating func rename(_ old: String, to new: String) {
         if let i = order.firstIndex(of: old) { order[i] = new }
         if let value = offsets.removeValue(forKey: old) { offsets[new] = value }
+        if let value = positions.removeValue(forKey: old) { positions[new] = value }
     }
 }
 
@@ -91,6 +115,9 @@ struct ArrangementMessage: Codable {
         var heightMm: Double
         var offsetMm: Double
         var online: Bool
+        var xMm: Double? = nil
+        var yMm: Double? = nil
+        var layoutVersion: Int? = 2
     }
     /// The receiving PC's ID.
     var you: String
@@ -102,7 +129,12 @@ struct ArrangementMessage: Codable {
 struct RemoteTarget {
     let id: String
     let offsetMm: Double
+    var xMm = 0.0
+    var widthMm = 290.0
+    var heightMm = 193.0
     /// Edges of that PC's screen that lead on to another screen.
     let openLeft: Bool
     let openRight: Bool
+    var openTop = false
+    var openBottom = false
 }

@@ -21,13 +21,13 @@ struct SettingsView: View {
                 } else {
                     ScreensCanvas(tiles: controller.tiles, arrangement: controller.arrangement,
                                   activeID: controller.remoteID ?? Arrangement.mac) { controller.setArrangement($0) }
-                        .frame(height: 150)
+                        .frame(height: 240)
                 }
             } header: {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Screens")
                     Spacer()
-                    Text("Drag to match your desk").font(.caption).foregroundStyle(.secondary)
+                    Text("Drag any screen to match your desk").font(.caption).foregroundStyle(.secondary)
                 }
             }
 
@@ -59,6 +59,12 @@ struct SettingsView: View {
                         }
                         Spacer()
                         StatusLabel(device: device, inUse: controller.remoteID == device.id, quality: controller.quality)
+                        Menu("Position") {
+                            Button("Windows above Mac") { controller.placePeer(device.id, on: .top) }
+                            Button("Windows below Mac") { controller.placePeer(device.id, on: .bottom) }
+                            Button("Windows left of Mac") { controller.placePeer(device.id, on: .left) }
+                            Button("Windows right of Mac") { controller.placePeer(device.id, on: .right) }
+                        }.fixedSize()
                         renameButton(device.id, current: device.name)
                         Button { removing = device } label: { Image(systemName: "minus.circle") }
                             .buttonStyle(.borderless)
